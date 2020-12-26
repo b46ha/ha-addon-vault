@@ -1,0 +1,100 @@
+name: Build plugin
+
+on:
+  pull_request:
+    branches: ["master"]
+  release:
+    types: ["published"]
+  push:
+    branches: ["master"]
+    paths:
+    - Dockerfile
+    - build.json
+    - 'rootfs/**'
+    - 'plugins/**'
+
+env:
+  BUILD_NAME: dns
+  BUILD_TYPE: plugin
+
+jobs:
+  init:
+    name: Initialize build
+    runs-on: ubuntu-latest
+    outputs:
+      architectures: ${{ steps.info.outputs.architectures }}
+      version: ${{ steps.version.outputs.version }}
+      channel: ${{ steps.version.outputs.channel }}
+      publish: ${{ steps.version.outputs.publish }}
+    steps:
+    - name: Checkout the repository
+      uses: actions/checkout@v2
+      with:
+        fetch-depth: 0
+
+    - name: Get information
+      id: info
+      uses: home-assistant/actions/helpers/info@master
+
+    - name: Get version
+      id: version
+      uses: home-assistant/actions/helpers/version@master
+      with:
+        type: ${{ env.BUILD_TYPE }}
+
+  build:
+    name: Build ${{ matrix.arch }} plugin
+    needs: init
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        arch: ${{ fromJson(needs.init.outputs.architectures) }}
+    steps:
+    - name: Checkout the repository
+      uses: actions/checkout@v2
+   
+    - name: Login to DockerHub
+      if: needs.init.outputs.publish == 'true'
+      uses: docker/login-action@v1
+      with:
+        username: ${{ secrets.DOCKERHUB_USERNAME }}
+        password: ${{ secrets.DOCKERHUB_TOKEN }}
+
+    - name: Set build arguments
+      if: needs.init.outputs.publish == 'false'
+      run: echo "BUILD_ARGS=--test" >> $GITHUB_ENV
+
+    - name: Build plugin
+      uses: home-assistant/builder@2020.11.0
+      with:
+        args: |
+          $BUILD_ARGS \
+          --${{ matrix.arch }} \
+          --target /data \
+          --generic ${{ needs.init.outputs.version }}
+
+  version:
+    name: Update addon
+    needs: ["init", "build"]
+    runs-on: ubuntu-latest
+    steps:
+    - name: Checkout the repository
+      uses: actions/checkout@v2
+    - name: Initialize git
+      if: needs.init.outputs.publish == 'true'
+      uses: b46ha/actions/helpers/git-init@master
+      with:
+        name: ${{ secrets.GIT_NAME }}
+        email: ${{ secrets.GIT_EMAIL }}
+        token: ${{ secrets.GIT_TOKEN }}
+    - name: push updates
+      shell: bash
+      if: needs.init.outputs.publish == 'true'
+      run: |
+        rm -rf ha-addons
+        git clone https://github.com/b46ha/ha-addons ha-addons
+        cp CHANGELOG.md README.md config.json logo.png icon.png ha-addons/ha-addon-vault
+        cd ha-addons
+        git add .
+        git commit -m "Automatic publish from github.com/b46ha/ha-addon-vault"
+        git push origin master

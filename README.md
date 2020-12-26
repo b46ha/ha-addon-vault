@@ -17,11 +17,12 @@ The raft data is stored in /data/vault/raft, it'll be removed if you remove the 
 
 ### Use AWS KMS for autounseal
 You can set the following values:
+```bash
 aws_unseal: true
 aws_region: eu-west-1
 aws_access_key: *****
 aws_secret_key: ******
 aws_kms_key_id: ******
+```
 
-You need first to create the kms key and affect the correct policy to use it. 
-(kms:Encrypt,kms:Decrypt and kms:DescribeKey)
+You'll need to create the kms key and the iam user credentials with correct policy (kms:Encrypt,kms:Decrypt and kms:DescribeKey)

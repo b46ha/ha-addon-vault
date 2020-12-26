@@ -18,17 +18,18 @@ VAULT_CONFIG_DIR=$VAULT_DIR/config
 mkdir -p $VAULT_CONFIG_DIR $VAULT_DIR/logs /data/vault/raft /config/vault/raft $VAULT_DIR/file 2>/dev/null
 
 # if a cert is available and tls is not disabled we copy the cert (to make it readble by wault) and we use it
-if [ -f $VAULT_TLS_PRIVKEY ] && [ "$DISABLE_TLS" = false ] ; then
+if [ -f "$VAULT_TLS_PRIVKEY" ] && [ "$DISABLE_TLS" = false ] ; then
     mkdir -p /ssl/vault 2/>/dev/null
-    cp $VAULT_TLS_PRIVKEY $VAULT_TLS_CERTIFICATE /ssl/vault
+    cp "$VAULT_TLS_PRIVKEY" "$VAULT_TLS_CERTIFICATE" /ssl/vault
     # chown for vault uses
     chown -R vault /ssl/vault
     scheme="https://"
 fi
-export VAULT_API_ADDR="${scheme}$(bashio::config 'vault_api_addr')"
-export VAULT_CLUSTER_ADDR="$(bashio::config 'vault_cluster_addr')"
+VAULT_API_ADDR="${scheme}$(bashio::config 'vault_api_addr')"
+VAULT_CLUSTER_ADDR="$(bashio::config 'vault_cluster_addr')"
+export VAULT_API_ADDR VAULT_CLUSTER_ADDR
 
-cat $CONFIG_PATH | /usr/bin/tempio -template /vault/config/vault.hcl.template -out $VAULT_CONFIG_DIR/vault.hcl
+/usr/bin/tempio -conf $CONFIG_PATH -template /vault/config/vault.hcl.template -out $VAULT_CONFIG_DIR/vault.hcl
 
 # You can also set the VAULT_LOCAL_CONFIG environment variable to pass some
 # Vault configuration JSON without having to bind any volumes.

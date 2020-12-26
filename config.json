@@ -1,9 +1,9 @@
 {
   "name": "Hashicorp Vault Addon",
-  "version": "0.4",
+  "version": "0.1",
   "slug": "vault",
   "description": "Add-on that launch an Hashicorp Vault server",
-  "url": "https://github.com/tidalf/hassio-addon-vault",
+  "url": "https://github.com/b46ha/ha-addon-vault",
   "privileged": ["IPC_LOCK"],
   "startup": "application",
   "boot": "auto",
@@ -38,6 +38,6 @@
     "aws_secret_key": "str?",
     "aws_kms_key_id": "str?"
   },
-  "arch": ["amd64", "armv7", "armhf", "i386" , "aarch64"],
-  "image": "tidalf/{arch}-coffee-maker"
+  "arch": ["amd64", "armhf", "i386" , "aarch64"],
+  "image": "b46ha/{arch}-hassio-vault"
 }
