@@ -1,0 +1,84 @@
+#!/usr/bin/env bashio
+set -e
+
+# Prevent core dumps
+ulimit -c 0
+
+CONFIG_PATH=/data/options.json
+
+# use HA /config for persistence
+VAULT_TLS_CERTIFICATE="$(bashio::config 'tls_certificate')"
+VAULT_TLS_PRIVKEY="$(bashio::config 'tls_private_key')"
+DISABLE_TLS="$(bashio::config 'disable_tls')"
+scheme="http://"
+bashio::log.info "disable_tls:${DISABLE_TLS}"
+
+VAULT_DIR=/config/vault
+VAULT_CONFIG_DIR=$VAULT_DIR/config
+mkdir -p $VAULT_CONFIG_DIR $VAULT_DIR/logs /data/vault/raft /config/vault/raft $VAULT_DIR/file 2>/dev/null
+
+# if a cert is available and tls is not disabled we copy the cert (to make it readble by wault) and we use it
+if [ -f $VAULT_TLS_PRIVKEY ] && [ "$DISABLE_TLS" = false ] ; then
+    mkdir -p /ssl/vault 2/>/dev/null
+    cp $VAULT_TLS_PRIVKEY $VAULT_TLS_CERTIFICATE /ssl/vault
+    # chown for vault uses
+    chown -R vault /ssl/vault
+    scheme="https://"
+fi
+export VAULT_API_ADDR="${scheme}$(bashio::config 'vault_api_addr')"
+export VAULT_CLUSTER_ADDR="$(bashio::config 'vault_cluster_addr')"
+
+cat $CONFIG_PATH | /usr/bin/tempio -template /vault/config/vault.hcl.template -out $VAULT_CONFIG_DIR/vault.hcl
+
+# You can also set the VAULT_LOCAL_CONFIG environment variable to pass some
+# Vault configuration JSON without having to bind any volumes.
+VAULT_LOCAL_CONFIG="$(bashio::config 'vault_local_config')"
+if [ -n "$VAULT_LOCAL_CONFIG" ] && [[ "$VAULT_LOCAL_CONFIG" != "null" ]]; then
+    echo "$VAULT_LOCAL_CONFIG" > "$VAULT_CONFIG_DIR/local.json"
+fi
+
+if [ "$1" = 'server' ]; then
+    shift
+    set -- vault server \
+        -config="$VAULT_CONFIG_DIR" \
+        -dev-listen-address="${VAULT_DEV_LISTEN_ADDRESS:-"0.0.0.0:8200"}" \
+        "$@"
+elif [ "$1" = 'version' ]; then
+    # This needs a special case because there's no help output.
+    set -- vault "$@"
+elif vault --help "$1" 2>&1 | grep -q "vault $1"; then
+    # We can't use the return code to check for the existence of a subcommand, so
+    # we have to use grep to look for a pattern in the help output.
+    set -- vault "$@"
+fi
+    
+# If the config dir is bind mounted then chown it
+if [ "$(stat -c %u /config/vault/config)" != "$(id -u vault)" ]; then
+    chown -R vault:vault /config/vault/config
+fi
+if [ "$(stat -c %u /config/vault/logs)" != "$(id -u vault)" ]; then
+    chown -R vault:vault /config/vault/logs
+fi
+if [ "$(stat -c %u /config/vault/file)" != "$(id -u vault)" ]; then
+    chown -R vault:vault /config/vault/file
+fi
+if [ "$(stat -c %u /data/vault)" != "$(id -u vault)" ]; then
+    chown -R vault:vault /data/vault
+fi
+if [ "$(stat -c %u /config/vault/raft)" != "$(id -u vault)" ]; then
+    chown -R vault:vault /config/vault/raft
+fi
+
+# Allow mlock to avoid swapping Vault memory to disk
+setcap cap_ipc_lock=+ep $(readlink -f $(which vault))
+
+# In the case vault has been started in a container without IPC_LOCK privileges
+if ! vault -version 1>/dev/null 2>/dev/null; then
+    setcap cap_ipc_lock=-ep $(readlink -f $(which vault))
+fi
+
+if [ "$(id -u)" = "0" ]; then
+    set -- su-exec vault "$@"
+fi
+
+exec "$@"
