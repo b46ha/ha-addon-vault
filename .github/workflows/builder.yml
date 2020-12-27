@@ -73,8 +73,8 @@ jobs:
           --target /data \
           --generic ${{ needs.init.outputs.version }}
 
-  version:
-    name: Update addon
+  publish:
+    name: publish addon
     needs: ["init", "build"]
     runs-on: ubuntu-latest
     steps:
