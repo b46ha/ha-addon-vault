@@ -87,14 +87,15 @@ jobs:
         name: ${{ secrets.GIT_NAME }}
         email: ${{ secrets.GIT_EMAIL }}
         token: ${{ secrets.GIT_TOKEN }}
-    - name: push updates
+    - name: publish addon
       shell: bash
       if: needs.init.outputs.publish == 'true'
       run: |
         rm -rf ha-addons
         git clone https://github.com/b46ha/ha-addons ha-addons
-        cp CHANGELOG.md README.md config.json logo.png icon.png ha-addons/ha-addon-vault
+        mkdir -p ha-addons/${{ github.event.repository.name }} 2>/dev/null
+        cp CHANGELOG.md README.md config.json logo.png icon.png ha-addons/${{ github.event.repository.name }}
         cd ha-addons
-        git add .
+        git add ${{ github.event.repository.name }}
         git commit -m "Automatic publish from github.com/b46ha/ha-addon-vault"
         git push origin master
