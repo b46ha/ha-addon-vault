@@ -7,10 +7,6 @@ on:
     types: ["published"]
   push:
     branches: ["master"]
-    paths:
-    - Dockerfile
-    - build.json
-    - docker-entrypoint.sh
 
 env:
   BUILD_NAME: ha-addon-vault
