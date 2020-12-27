@@ -91,11 +91,12 @@ jobs:
       shell: bash
       if: needs.init.outputs.publish == 'true'
       run: |
+        REPOSITORY_NAME=$(echo "$GITHUB_REPOSITORY" | awk -F / '{print $2}' | sed -e "s/:refs//")
         rm -rf ha-addons
         git clone https://github.com/b46ha/ha-addons ha-addons
-        mkdir -p ha-addons/${{ github.event.repository.name }} 2>/dev/null
-        cp CHANGELOG.md README.md config.json logo.png icon.png ha-addons/${{ github.event.repository.name }}
+        mkdir -p ha-addons/$REPOSITORY_NAME 2>/dev/null
+        cp CHANGELOG.md README.md config.json logo.png icon.png ha-addons/$REPOSITORY_NAME
         cd ha-addons
-        git add ${{ github.event.repository.name }}
+        git add $REPOSITORY_NAME
         git commit -m "Automatic publish from github.com/b46ha/ha-addon-vault"
         git push origin master
