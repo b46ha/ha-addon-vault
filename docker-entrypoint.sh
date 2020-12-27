@@ -26,6 +26,7 @@ if [ -f "$VAULT_TLS_PRIVKEY" ] && [ "$DISABLE_TLS" = false ] ; then
     chown -R vault /ssl/vault
     scheme="https://"
 fi
+
 VAULT_API_ADDR="${scheme}$(bashio::config 'vault_api_addr')"
 VAULT_CLUSTER_ADDR="$(bashio::config 'vault_cluster_addr')"
 export VAULT_API_ADDR VAULT_CLUSTER_ADDR
