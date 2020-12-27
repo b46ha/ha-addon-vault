@@ -10,11 +10,10 @@ on:
     paths:
     - Dockerfile
     - build.json
-    - 'rootfs/**'
-    - 'plugins/**'
+    - docker-entrypoint.sh
 
 env:
-  BUILD_NAME: dns
+  BUILD_NAME: ha-addon-vault
   BUILD_TYPE: plugin
 
 jobs:
@@ -77,11 +76,14 @@ jobs:
     name: publish addon
     needs: ["init", "build"]
     runs-on: ubuntu-latest
+    on: 
+      release:
+        types:
+          - created
     steps:
     - name: Checkout the repository
       uses: actions/checkout@v2
     - name: Initialize git
-      if: needs.init.outputs.publish == 'true'
       uses: b46ha/actions/helpers/git-init@master
       with:
         name: ${{ secrets.GIT_NAME }}
@@ -89,7 +91,6 @@ jobs:
         token: ${{ secrets.GIT_TOKEN }}
     - name: publish addon
       shell: bash
-      if: needs.init.outputs.publish == 'true'
       run: |
         REPOSITORY_NAME=$(echo "$GITHUB_REPOSITORY" | awk -F / '{print $2}' | sed -e "s/:refs//")
         rm -rf ha-addons
